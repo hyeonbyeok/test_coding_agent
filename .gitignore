@@ -1,0 +1,30 @@
+# ── GSD 설치물 ──────────────────────────────────
+# 복원: npx @opengsd/gsd-core@latest   (README.md 참고)
+# 커밋하지 않는 이유: /gsd-update 한 번에 수백 파일 diff가 생겨 실제 변경이 묻힌다
+.claude/gsd-core/
+.claude/agents/
+.claude/commands/
+.claude/hooks/
+.claude/scripts/
+.claude/skills/
+
+# ── 머신별 설치 상태 ────────────────────────────
+# 공유하면 PC마다 충돌한다
+.claude/gsd-install-state.json
+.claude/gsd-file-manifest.json
+.claude/gsd-migration-journal/
+.claude/.gsd-profile
+
+# ── 로컬 설정 ───────────────────────────────────
+# node.exe 절대경로가 박혀 있고 GSD 설치가 재생성한다
+.claude/settings.local.json
+
+# ── 스킬 설치물 ─────────────────────────────────
+# 복원: skills-lock.json 참고
+.agents/
+
+# ── OS / 편집기 ─────────────────────────────────
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
