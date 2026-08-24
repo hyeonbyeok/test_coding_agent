@@ -47,9 +47,11 @@ Claude Code 안에서 `/plugin` 으로 설치한다. `.claude/settings.json` 에
 
 ### 4. 스킬
 
-`skills-lock.json` 이 출처와 해시를 잠근다. 현재 항목:
+`skills-lock.json` 이 출처와 해시를 잠근다. 업데이트는 `npx skills update`. 현재 항목:
 
 - `find-skills` — 출처 `vercel-labs/skills`, 설치 위치 `.agents/skills/find-skills/`
+- `subagent-driven-development` — 출처 `obra/superpowers`, 설치 위치 `.agents/skills/subagent-driven-development/` (Claude Code용 심링크: `.claude/skills/`)
+- `dispatching-parallel-agents` — 출처 `obra/superpowers`, 설치 위치·심링크 동일 패턴
 
 ### 5. 메모리 경로 고치기 ⚠️
 

@@ -14,3 +14,4 @@
 <!-- - [제목](파일명.md) — 훅 -->
 
 - [기존 관례 먼저 확인](check-existing-conventions-first.md) — 새 규칙을 만들기 전에 이미 있는지 찾는다
+- [서브에이전트 운영 원칙](subagent-operating-principles.md) — 3단 구분 · 비가역성 기준 개입 · 검증이 싸면 저모델
