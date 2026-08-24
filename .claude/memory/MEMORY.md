@@ -7,7 +7,7 @@
 
 <!-- - [이름](../../이름/CLAUDE.md) — 한 줄 설명 -->
 
-- [osm-test](../../osm-test/CLAUDE.md) — OpenStreetMap 데이터를 직접 다뤄보는 실험 프로젝트 (읽기 전용, 산출물 미정)
+- [osm-test](../../osm-test/CLAUDE.md) — eGov/React/PWA/MariaDB 환경에 자체 호스팅 OSM 벡터 타일 붙이기 (플랜: .planning/OSM-INTEGRATION.md)
 
 ## 작업 방식 · 선호
 

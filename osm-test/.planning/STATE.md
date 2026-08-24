@@ -16,12 +16,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-08-21)
 
 **Core value:** 작동하는 것을 빨리 본다 — 설계보다 실행
-**Current focus:** 프로젝트 목표 확정 (무엇을 만들 것인가)
+**Current focus:** P0 — tileserver-gl 띄우고 curl 로 응답 검증
 
 ## Current Position
 
 Status: 계획 중
-Last activity: 2026-08-21 — 폴더와 기록 파일 4개를 만들었다. 코드는 아직 없다
+Last activity: 2026-08-21 — 설치 가이드(pptx) 분석 → `OSM-INTEGRATION.md` 플랜 작성. 코드는 아직 없다
 
 ## Accumulated Context
 
@@ -29,18 +29,27 @@ Last activity: 2026-08-21 — 폴더와 기록 파일 4개를 만들었다. 코�
 
 전체 목록은 `PROJECT.md` 의 Key Decisions 표에 있다. 지금 작업에 영향을 주는 것만:
 
-- 읽기 전용으로 한정 (OSM 편집 안 함)
-- 데이터 취득 경로는 목표 확정 후에 고른다
+- 자체 타일 서버 운영 (tileserver-gl + Geofabrik Shortbread) — Out of Scope 에서 철회
+- MapLibre GL JS 단독, Leaflet 브리지 안 씀
+- Caddy 단일 오리진, 타일은 Tomcat 우회
+- 인증서: 운영은 기관 게이트웨이가 TLS 담당, 내부 Caddy 는 HTTP
+- 위치 갱신은 폴링, 테이블은 latest/log 분리
+- 런타임 확정: Java 17 / Tomcat 9.0.78 고정(패치·메이저 업그레이드 불가) — 조합 성립 검증 완료, 미패치 CVE 는 설정 완화 필수 (플랜 3절)
 
 ### Blockers/Concerns
 
-목표가 비어 있다. "OSM으로 무엇을" 이 정해지기 전엔 스택도 데이터 경로도 고를 수 없다.
+- **PWA 는 백그라운드 위치 전송이 안 된다.** 요구사항이 이걸 전제하면 네이티브 래퍼로 범위가 바뀐다 — P2 API 설계 전 확인
+- 게이트웨이 미확인: 서브패스 여부 / WebSocket·SSE 허용 / 타임아웃 (`OSM-INTEGRATION.md` 9절) — **P2 진입 전까지만 필요, P0/P1 은 무관**
+- 폐쇄망 반입 절차 — 8절 목록. **개발 PC 는 외부망 가능**하므로 P0/P1 검증 자체는 막히지 않는다
+- Tomcat 9.0.78 미패치 CVE (RCE 포함) — 업그레이드 불가라 설정 완화가 유일한 방어. P2 배치 시 3절 완화 3종(readonly·HTTP/2 미사용·메서드 제한) 적용 확인 필요
 
 ## Session Continuity
 
-Last session: 2026-08-21
-Stopped at: 템플릿 4개 채워 넣기 완료
-Next: 무엇을 만들지 정한다 → 정해지면 데이터 취득 경로 하나를 골라 실제 응답부터 받아본다
+Last session: 2026-08-24
+Stopped at: 런타임 최종 확정 반영 — Tomcat 9.0.78 고정(패치 불가), CVE 대응은 설정 완화로 전환 (OSM-INTEGRATION.md 2·3·8·9절).
+Codex 검토 반영 — P0 실행 재현성(curl 체크리스트·이미지 태그 고정), 위치 API 계약, 이력 테이블 DDL, 단계별 완료 기준 보강
+Next: P0 (tileserver-gl 띄우고 curl 4종 확인, 재현성 절 참고) — 게이트웨이 경로·백그라운드 요구·위치 열람 범위 확인은
+P0 를 막지 않는다. P2 진입 전까지만 확정하면 된다 (런타임은 이미 확정됨)
 
 <!--
 100줄을 넘기지 말 것. 아카이브가 아니라 다이제스트다.

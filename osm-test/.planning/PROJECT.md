@@ -2,8 +2,9 @@
 
 ## What This Is
 
-OpenStreetMap 데이터를 가져오고, 파싱하고, 써먹어 보는 실험 프로젝트.
-"OSM으로 무엇을 만들 수 있는지" 를 손으로 확인하는 것이 목적이고, 구체적인 산출물은 아직 정하지 않았다.
+기존 테스트 개발 환경(eGov 4.3 / React 19.2 + Vite / PWA + GPS / MariaDB)에
+자체 호스팅 OSM 벡터 타일 지도를 붙이는 실험 프로젝트.
+설치 가이드(pptx, JSP 기준)를 React 스택으로 옮기고, 여러 사용자의 현재 위치를 지도에 실시간으로 표시한다.
 
 ## Core Value
 
@@ -13,9 +14,13 @@ OpenStreetMap 데이터를 가져오고, 파싱하고, 써먹어 보는 실험 �
 
 ### Active
 
-- 프로젝트 목표 확정 — 무엇을 만들 것인지 (지오코딩 / 경로탐색 / 시각화 / 데이터 추출 중 하나 이상)
-- 데이터 취득 경로 하나를 골라 실제 응답을 받아본다
-- 기술 스택 결정
+- tileserver-gl 을 띄워 curl 로 타일·폰트·TileJSON 응답 확인 (P0)
+- React + MapLibre 로 지도와 현재 위치 표시 (P1)
+- Caddy 단일 오리진 + 위치 저장/조회 API + `user_position_latest` 테이블 (P2)
+- 다른 사용자 위치를 GeoJSON source 로 표시, 폴링 갱신 (P2)
+- PWA 타일 캐싱 (P3)
+
+단계 상세는 `OSM-INTEGRATION.md`.
 
 ### Validated
 
@@ -23,22 +28,26 @@ OpenStreetMap 데이터를 가져오고, 파싱하고, 써먹어 보는 실험 �
 
 ### Out of Scope
 
-- 자체 타일 서버 운영 — 실험 규모에 비해 비용이 크다. 필요하면 기존 타일 서비스를 쓴다
 - OSM에 데이터를 기여(편집)하는 것 — 읽기만 한다
+- 전국 오프라인 지도 — mbtiles 가 GB 단위라 불가능. 관심 영역 사전 캐시까지만
+- 지오코딩·경로탐색 — 별도 서버(Nominatim/OSRM)가 필요. 요구사항에 오르면 그때 (P4)
 
 ## Context
 
-`test_coding_agent` 컨테이너 안의 하위 프로젝트로 시작했다. 이전 시도 없음.
+`test_coding_agent` 컨테이너 안의 하위 프로젝트. 출발점은 `260202_OSM_서비스_설치가이드.pptx` —
+Geofabrik 한국 Shortbread mbtiles → tileserver-gl(Docker) → Caddy TLS → JSP+Leaflet+MapLibre 구성이다.
 
-OSM 생태계에서 실질적인 선택지는 셋이다:
-- **Overpass API** — 조건 질의. 소~중량 조회에 적합. 공용 인스턴스는 사용량 제한이 있다
-- **지역 추출본(.osm.pbf, Geofabrik 등)** — 대량 처리용. 로컬에서 파싱해 쓴다
-- **OSM 메인 API** — 편집용. 대량 읽기에는 쓰지 않는 것이 정책이다
+기존 환경: eGovFrame 4.3 백엔드(Java 17 / Tomcat 9.0.78), React 19.2 + Vite 프론트, PWA 셋업 완료(GPS 사용 가능), MariaDB 10.11.
+내부망 배치. 외부 사용자는 기관 게이트웨이가 허용한 URL 하나를 통해 프록시로 들어온다 — 외부 다운로드 불가.
 
 ## Constraints
 
-- **라이선스**: OSM 데이터는 ODbL — 파생물을 공개 배포하면 동일 라이선스와 출처 표기가 따라온다
-- **의존성**: 공용 Overpass 인스턴스는 무료지만 rate limit이 있다 — 실험 루프를 돌릴 땐 응답을 캐시한다
+- **라이선스**: OSM 데이터는 ODbL — 출처 표기 필수. 커스텀 스타일엔 attribution 이 자동으로 안 붙는다
+- **보안 컨텍스트**: GPS·Service Worker 는 HTTPS(또는 localhost) 에서만 동작. 자료의 SAN 없는 self-signed 인증서로는 PWA 가 안 된다
+- **DB**: MariaDB 공간 함수는 PostGIS 보다 좁다 (좌표계 변환 없음). OSM 원본을 DB에 넣지 않는다
+- **폐쇄망**: 이미지·mbtiles·npm 전부 반입. 스타일 JSON 에 외부 URL 이 있으면 안 된다
+- **PWA**: 백그라운드 위치 전송 불가 — 화면에 떠 있을 때만 GPS 가 흐른다
+- **스타일 호환**: Shortbread 스키마 전용 스타일만 쓸 수 있다. OpenMapTiles 계열 스타일은 레이어명이 다르다
 
 ## Key Decisions
 
@@ -46,8 +55,16 @@ OSM 생태계에서 실질적인 선택지는 셋이다:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| 읽기 전용으로 한정 | 편집은 실제 지도에 영향을 준다 — 실험 프로젝트에 맞지 않는다 | — 보류 없음, 확정 |
-| 데이터 취득 경로 | 목표가 정해져야 Overpass / pbf 중 고를 수 있다 | — 보류 |
+| 읽기 전용으로 한정 | 편집은 실제 지도에 영향을 준다 — 실험 프로젝트에 맞지 않는다 | 확정 |
+| 자체 타일 서버 운영 (Out of Scope 에서 철회) | 설치 가이드가 이미 이 방식이고, 외부 타일 서비스는 사내망·비용 문제가 있다 | 확정 — tileserver-gl + Geofabrik Shortbread |
+| MapLibre GL JS 단독 (Leaflet 브리지 제거) | React 신규 개발에 이중 구조 근거 없음. GeolocateControl 이 GPS 추적 내장 | 확정 — Leaflet 플러그인 의존이 생기면 재검토 |
+| Caddy 단일 오리진 (/, /api, /tiles) | CORS·인증서·SW 스코프 문제가 한 번에 사라진다. 타일은 Tomcat 우회 | 확정 |
+| 인증서: 로컬 localhost → 사내망 mkcert+SAN → 운영은 게이트웨이 인증서 | 자료의 self-signed 는 PWA 를 막는다. 내부망이라 Let's Encrypt 불가 | 확정 |
+| 위치 갱신은 폴링 (5~10초) | 기관 게이트웨이를 통제 못 함 — WebSocket/SSE 는 막힐 수 있다 | 확정 — 게이트웨이 확인 후 SSE 재검토 |
+| 위치 테이블 latest/log 분리 | 조회는 latest 만, 이력은 파티션+보존기간 | 확정 |
+| 타 사용자 마커는 GeoJSON source 하나 | Marker DOM 은 수십 명부터 무거움 | 확정 |
+| 지오코딩·경로탐색 | 타일 서버로 안 됨. 별도 서버 비용이 크다 | 보류 — 요구사항 확정 후 |
+| Tomcat 9.0.78 고정 — 패치·메이저 업그레이드 모두 불가 | 10.1+ 는 jakarta 라 eGov 4.x(javax)와 비호환, 패치는 기관 사정으로 불가. 미패치 RCE 는 설정 완화로 차단: Default Servlet readonly 유지·HTTP/2 미사용·Caddy 메서드 제한 (플랜 3절) | 확정 (2026-08-24) |
 
 <!--
 GSD 정본 섹션 구성을 따랐다 (gsd-core/templates/project.md).
