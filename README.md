@@ -49,9 +49,9 @@ Claude Code 안에서 `/plugin` 으로 설치한다. `.claude/settings.json` 에
 
 `skills-lock.json` 이 출처와 해시를 잠근다. 업데이트는 `npx skills update`. 현재 항목:
 
-- `find-skills` — 출처 `vercel-labs/skills`, 설치 위치 `.agents/skills/find-skills/`
-- `subagent-driven-development` — 출처 `obra/superpowers`, 설치 위치 `.agents/skills/subagent-driven-development/` (Claude Code용 심링크: `.claude/skills/`)
-- `dispatching-parallel-agents` — 출처 `obra/superpowers`, 설치 위치·심링크 동일 패턴
+- `find-skills` — 스킬 검색·설치 도우미. "X 하는 스킬 있어?" 같은 요청에 오픈 스킬 생태계를 뒤져 찾아 설치해 준다. 출처 `vercel-labs/skills`, 설치 위치 `.agents/skills/find-skills/`
+- `subagent-driven-development` — 구현 계획을 작업 단위로 쪼개 작업마다 새 서브에이전트를 띄워 실행하고, 작업별 리뷰 + 마지막 전체 리뷰를 거친다. 출처 `obra/superpowers`, 설치 위치 `.agents/skills/subagent-driven-development/` (Claude Code용 심링크: `.claude/skills/`)
+- `dispatching-parallel-agents` — 서로 독립인 작업이 2개 이상일 때 문제마다 에이전트 하나씩 병렬로 분배해 동시에 처리한다. 출처 `obra/superpowers`, 설치 위치·심링크 동일 패턴
 
 ### 5. 메모리 경로 고치기 ⚠️
 
