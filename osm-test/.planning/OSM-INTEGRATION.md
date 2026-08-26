@@ -2,7 +2,8 @@
 
 기준 자료: `260202_OSM_서비스_설치가이드.pptx` (13장)
 대상 스택: eGovFrame 4.3 (Spring 5.3.37, javax) / Java 17 / Tomcat 9.0.78 / React 19.2 + Vite / PWA + GPS / MariaDB 10.11
-배치: 내부망. 외부 사용자는 기관 게이트웨이가 허용한 특정 URL → 프록시 → 내부 React 화면
+운영 환경: `../네트워크 다이어그램.jpg` (2026-08-26 확인) — TLS_EDGE(Let's Encrypt, :443 종단) → NGINX(WEB VM, :80) → WAS VM(Tomcat :8080 + NodeJS :8090) / DB VM(MariaDB :3306) / SEARCH VM / Squid :3128 / GitLab·Artifactory(CICD). Egress 는 firewalld 로 차단. **테스트 개발 환경에는 이 인프라가 없다** — 개발 PC(외부망 가능) + localhost 로 진행
+배치: 내부망. 외부 사용자는 TLS_EDGE(:443) 로 진입한다. 앞단에 기관 게이트웨이가 더 있는지는 미확인 (9절)
 용도: 내 현위치 + 다른 사용자 위치를 지도에 표시. 위치는 DB에 계속 저장
 
 ## 1. 자료가 실제로 정의하는 것
@@ -72,21 +73,23 @@ eGovFrame·Tomcat 언급은 없다. 실제 프로젝트 백엔드는 eGovFrame 4
 
 ## 3. 목표 아키텍처
 
-Caddy를 **단일 진입점**으로 두고 3방향 분기한다.
+**NGINX 를 단일 분기점**으로 두고 3방향 분기한다. 운영의 리버스 프록시는 이미 NGINX(WEB VM)이므로 **초안의 Caddy 는 폐기한다** (2026-08-26, 네트워크 다이어그램 확인) — 테스트에서 검증한 프록시 설정을 운영에 그대로 이식하려면 같은 구현체여야 한다.
 
 ```
 외부 브라우저(PWA)
-   │  https://<기관 게이트웨이>/<허용된 경로>/     ← TLS 는 여기서 끝난다 (기관 인증서)
+   │  https://<TLS_EDGE>/...        ← TLS 는 여기서 끝난다 (Let's Encrypt, :443)
+   ▼                                  앞단에 기관 게이트웨이가 더 있는지 미확인 (9절)
+ TLS_EDGE ──── 내부망 ────▶
    ▼
- 기관 프록시 ──── 내부망 ────▶
-   ▼
- Caddy(내부, HTTP) ─┬─ /   → React 빌드 정적 파일 (dev: Vite :5173)
-        ├─ /api/*       → eGov / Tomcat :8080
+ NGINX(WEB VM :80, HTTP) ─┬─ /  → React 빌드 정적 파일 (dev: Vite :5173)
+        ├─ /api/*       → WAS VM: eGov / Tomcat :8080
         └─ /tiles/*     → tileserver-gl :8081  (Tomcat을 경유하지 않음)
                               ▼
                          korea.mbtiles + fonts_pbf
- eGov ── JDBC ──▶ MariaDB (GPS 궤적 / POI, POINT + SPATIAL INDEX)
+ eGov ── JDBC ──▶ DB VM: MariaDB :3306 (GPS 궤적 / POI, POINT + SPATIAL INDEX)
 ```
+
+테스트 개발 환경에는 프록시가 없다 — P2 로컬 검증 때 NGINX 를 직접 띄워 위 구조를 모사한다.
 
 **단일 오리진으로 가는 이유**
 
@@ -95,11 +98,11 @@ Caddy를 **단일 진입점**으로 두고 3방향 분기한다.
 | CORS | 필요 (tileserver 기본 헤더에 의존) | 불필요 |
 | 인증서 | 오리진 수만큼 | 1장 |
 | Service Worker 스코프 | 타일이 교차 오리진 | 전부 동일 스코프 |
-| 접근 제어 | 타일 서버가 무방비 | Caddy/eGov에서 통제 가능 |
+| 접근 제어 | 타일 서버가 무방비 | NGINX/eGov에서 통제 가능 |
 
-타일 트래픽은 Caddy에서 바로 tileserver로 보낸다. **Tomcat을 통과시키지 않는다** — 타일은 요청 수가 많아 WAS 스레드풀을 잠식한다.
+타일 트래픽은 NGINX에서 바로 tileserver로 보낸다. **Tomcat을 통과시키지 않는다** — 타일은 요청 수가 많아 WAS 스레드풀을 잠식한다.
 
-tileserver-gl 컨테이너 내부 포트는 8080이지만 Tomcat(:8080)과 겹치므로 **호스트 매핑은 :8081** 로 뺀다 (`-p 8081:8080`). 자료의 `:8080` 표기를 같은 호스트에서 그대로 쓰면 충돌한다.
+tileserver-gl 컨테이너 내부 포트는 8080이지만 Tomcat(:8080)과 겹치므로 **호스트 매핑은 :8081** 로 뺀다 (`-p 8081:8080`). 자료의 `:8080` 표기를 같은 호스트에서 그대로 쓰면 충돌한다. 운영 WAS VM 은 NodeJS 가 **:8090** 도 쓰고 있으므로 8090 역시 피한다. 배치 위치(WAS VM 에 Docker 가 있는지, 없으면 Node 직접 실행인지)는 미확인 — 9절.
 
 ### 런타임 버전 (2026-08-24 확정·검증)
 
@@ -108,16 +111,16 @@ tileserver-gl 컨테이너 내부 포트는 8080이지만 Tomcat(:8080)과 겹�
 - 9.0.78(2023-07) 이후 수정된 CVE 를 안고 간다 — CVE-2024-50379/56337(Default Servlet 쓰기 RCE), CVE-2025-24813(partial PUT RCE), CVE-2023-44487(HTTP/2 Rapid Reset). 패치가 불가하므로 아래 설정 완화가 **필수**다:
   - Default Servlet `readonly` 를 기본값(true)대로 둔다 — `readonly=false` 금지. 위 RCE 3건(CVE-2024-50379/56337, CVE-2025-24813)은 모두 쓰기 허용이 전제라, 이것만 지켜도 성립하지 않는다
   - HTTP/2 커넥터(`UpgradeProtocol`)를 켜지 않는다 — 기본 비활성. Rapid Reset 이 무관해진다
-  - Tomcat 을 직접 노출하지 않는다(3절 구조대로 Caddy 뒤에만). Caddy 에서 `/api` 에 필요한 메서드(GET/POST 등)만 통과시켜 PUT 계열 공격면을 추가로 줄인다
+  - Tomcat 을 직접 노출하지 않는다(3절 구조대로 NGINX 뒤에만). NGINX 에서 `/api` 에 필요한 메서드(GET/POST 등)만 통과시켜 PUT 계열 공격면을 추가로 줄인다
 - Tomcat 9 지원 종료는 2027-03-31 이전에는 없음 (공식 명시)
 
-**게이트웨이가 경로 하나만 뚫어준다는 전제가 단일 오리진을 선택이 아니라 필수로 만든다.**
-타일 서버를 별도 포트로 노출하는 자료 방식은 게이트웨이를 두 번 뚫어야 하므로 성립하지 않는다.
+**진입점이 TLS_EDGE 하나라는 구조가 단일 오리진을 선택이 아니라 필수로 만든다.**
+타일 서버를 별도 포트로 노출하는 자료 방식은 진입점을 하나 더 뚫어야 하므로 성립하지 않는다.
 
-게이트웨이 경유 시 추가로 지켜야 할 것:
-- **서브패스 배포 가능성** — 허용 URL 이 `https://gw/osm/` 처럼 경로를 가지면 Vite `base`, SW `scope`, 스타일의 타일 URL 모두 **상대 경로**로 써야 한다. 절대 경로 `/tiles/...` 는 깨진다
-- **TLS 는 게이트웨이 담당** — 내부 Caddy 는 HTTP 로 둔다. 5절의 mkcert/Let's Encrypt 는 내부망 실단말 테스트용으로만 남는다
-- **게이트웨이 타임아웃·WebSocket 허용 여부** — 8절 실시간 전송 방식을 좌우한다. 미리 확인한다
+진입점(TLS_EDGE) 관련 추가로 지켜야 할 것:
+- **서브패스 배포 가능성** — 허용 URL 이 `https://edge/osm/` 처럼 경로를 가지면 Vite `base`, SW `scope`, 스타일의 타일 URL 모두 **상대 경로**로 써야 한다. 절대 경로 `/tiles/...` 는 깨진다
+- **TLS 는 TLS_EDGE 담당 (Let's Encrypt)** — 내부 NGINX 는 HTTP 로 둔다. 5절의 mkcert 는 테스트 개발 환경의 실단말 테스트용으로 남는다 (테스트 환경에는 TLS_EDGE 가 없다)
+- **타임아웃·WebSocket 허용 여부** — TLS_EDGE(와 그 앞 기관 장비 유무)에 달렸다. 7절 실시간 전송 방식을 좌우한다. 미리 확인한다
 
 ## 4. 단계
 
@@ -173,7 +176,7 @@ OpenMapTiles 계열 스타일(Positron, Bright 등)은 레이어명이 달라 �
 
 ### P2 — 단일 오리진 + 백엔드 연동
 
-- Caddyfile 3방향 분기 (3절)
+- NGINX 3방향 분기 (3절) — 운영 WEB VM 과 같은 구현체로 로컬에서 검증해 설정을 그대로 이식한다
 - eGov REST 엔드포인트 1개로 왕복 검증 (예: 현재 위치 저장)
 - MariaDB 스키마 — `POINT NOT NULL` + `SPATIAL INDEX` (7절 DDL. `SRID 4326` 컬럼 속성은 MySQL 8 전용이라 쓰지 않는다)
 
@@ -213,10 +216,10 @@ OpenMapTiles 계열 스타일(Positron, Bright 등)은 레이어명이 달라 �
 | 환경 | 방법 | GPS | SW/PWA |
 |---|---|---|---|
 | 로컬 개발 | `http://localhost:5173` | O (예외) | O (예외) |
-| 사내망 실단말 | mkcert 로컬 CA + **SAN에 IP/호스트명** + 단말에 CA 설치 | O | O |
-| 운영 (게이트웨이 경유) | 기관 게이트웨이 인증서. 내부 Caddy 는 HTTP | O | O |
+| 테스트 개발 실단말 (P3) | mkcert 로컬 CA + **SAN에 IP/호스트명** + 단말에 CA 설치 — 테스트 환경에는 TLS_EDGE 가 없어 필요 | O | O |
+| 운영 (TLS_EDGE 경유) | TLS_EDGE 의 Let's Encrypt 인증서 (:443 종단). 내부 NGINX 는 HTTP | O | O |
 
-운영에서 내부 Caddy 는 TLS 를 끈다(`auto_https off` 유지, `:80` 리슨). Let's Encrypt 는 내부망에서 발급이 안 되므로 쓰지 않는다.
+운영에서 내부 NGINX 는 TLS 를 켜지 않는다(`:80` 리슨). 초안의 "Let's Encrypt 는 내부망이라 못 쓴다"는 **정정** — 운영 최전단 TLS_EDGE 가 이미 Let's Encrypt 를 쓴다 (2026-08-26 다이어그램 확인). 내부 VM 이 직접 발급 못 하는 것은 여전하다(Egress 차단) — 발급·갱신은 TLS_EDGE 소관이므로 이 프로젝트에서 다룰 일이 없다.
 
 ## 6. MariaDB 제약
 
@@ -322,8 +325,8 @@ N일 경과분 삭제, 또는 파티션 자체를 DROP. 정확한 N일 값과 �
 | SSE | 서버 푸시, HTTP 기반 | 프록시 버퍼링·유휴 타임아웃에 끊김 |
 | WebSocket | 양방향, 지연 최소 | 게이트웨이가 Upgrade 를 막는 경우 많음 |
 
-기관 게이트웨이를 통제할 수 없으므로 폴링이 유일하게 확실한 방식이다.
-5~10초 주기면 사람 이동 속도에서 체감 차이가 없다. 지연이 문제가 되면 그때 SSE 를 시험한다 — 게이트웨이 확인 후.
+진입점 앞단 구성(TLS_EDGE 앞에 기관 게이트웨이가 있는지 — 9절)을 확인하기 전까지는 폴링이 유일하게 확실한 방식이다.
+5~10초 주기면 사람 이동 속도에서 체감 차이가 없다. 지연이 문제가 되면 그때 SSE 를 시험한다 — 진입점 확인 후. TLS_EDGE 가 최전단이고 우리 통제라면 SSE 채택 여지가 커진다.
 
 ### 프론트 — 마커가 아니라 GeoJSON source
 
@@ -334,7 +337,7 @@ N일 경과분 삭제, 또는 파티션 자체를 DROP. 정확한 N일 값과 �
 ### PWA 한계 — 알고 시작해야 할 것
 
 - **백그라운드 위치 전송은 안 된다.** 브라우저 PWA 는 앱이 화면에 있을 때만 `watchPosition` 이 동작한다. 화면을 끄거나 다른 앱으로 가면 전송이 멈춘다
-- 이 한계가 요구사항과 맞지 않으면 네이티브 래퍼(Capacitor 등)가 필요하다 — 프로젝트 범위가 달라지므로 초기에 결정한다
+- **결정(2026-08-26): 이 한계를 수용하고 PWA 확정.** 네이티브 앱(래퍼 포함)이 불가한 환경이라 웹 기반으로 앱형 기능을 쓰는 PWA 로 정해져 있다 — 배경 인지용. **이번 테스트 프로젝트가 쓰는 것은 지도·GPS·타일 캐싱뿐이다** (푸시 알림 등 다른 PWA 기능은 범위 밖). 위치는 화면에 떠 있는 동안만 흐른다는 전제로 UI·데이터를 설계한다 (오래된 위치 흐림/숨김 처리가 그래서 필수다)
 - `updated_at` 이 오래된 사용자는 지도에서 흐리게/숨김 처리한다. 안 그러면 "마지막으로 본 위치" 가 "지금 위치" 로 읽힌다
 
 ### 개인정보
@@ -343,17 +346,19 @@ N일 경과분 삭제, 또는 파티션 자체를 DROP. 정확한 N일 값과 �
 
 ## 8. 폐쇄망 반입 목록
 
-내부망에서 외부 다운로드가 안 되므로 아래를 외부에서 받아 **반입 절차로** 들여온다.
-버전을 고정하고 해시를 남긴다.
+운영은 firewalld 로 Egress 가 차단되므로 아래를 외부에서 받아 **반입 절차로** 들여온다.
+버전을 고정하고 해시를 남긴다. 경로 후보는 둘이다 (어느 쪽이 표준인지 미확인 — 9절):
+① 개발 PC(외부망 가능)에서 받아 **Artifactory**(CICD VM)에 올린다 — npm/Maven 은 물론 mbtiles·Docker 이미지도 generic 저장소로 가능
+② **Squid(:3128)** 허용 목록에 출처 도메인을 넣어 프록시로 받는다
 
 | 품목 | 크기 감 | 비고 |
 |---|---|---|
 | `south-korea-shortbread-1.0.mbtiles` | 453MB (확인) | Geofabrik. Last-Modified 가 전날일 정도로 자주 재생성됨 — 재반입 주기는 우리가 정한다 |
 | `maptiler/tileserver-gl` 이미지 | 수백 MB | `docker save` → tar. `latest` 대신 태그 고정 + digest(`sha256:...`) 기록 |
-| `caddy:2` 이미지 | 소 | 동일 |
+| NGINX | — | 운영 WEB VM 에 이미 있음 — 반입 불요. P2 로컬 검증용은 개발 PC 에서 직접 설치 |
 | `node:20` 이미지 | 대 | 폰트 PBF 생성용. **또는 외부에서 `fonts_pbf/` 를 만들어 결과물만 반입** — 이쪽이 가볍다 |
-| npm 의존성 | 중 | `maplibre-gl`, `vite-plugin-pwa` 등. 사내 레지스트리(Nexus/Verdaccio) 또는 `node_modules` tar |
-| Maven 의존성 | 중 | eGov 쪽. 사내 Nexus |
+| npm 의존성 | 중 | `maplibre-gl`, `vite-plugin-pwa` 등. Artifactory npm 저장소 또는 `node_modules` tar |
+| Maven 의존성 | 중 | eGov 쪽. Artifactory Maven 저장소 |
 | JDK 17 / Tomcat 9.0.78 | 중 | 기존 테스트 환경 설치분 사용. 패치 업그레이드 불가 확정(3절)이라 추가 반입 없음 |
 
 `tileserver-gl` 은 로컬 mbtiles·폰트만 쓰면 기동 시 외부 호출이 없을 것으로 **추정**한다 (미검증 — P0 에서 네트워크 차단 상태로 확인). 단 **스타일 JSON 안의 `sprite`·`glyphs`·소스 URL 이 외부를 가리키면 그 시점에 깨진다** — 전부 상대 경로로.
@@ -364,10 +369,13 @@ N일 경과분 삭제, 또는 파티션 자체를 DROP. 정확한 N일 값과 �
 - [x] Tomcat 패치 업그레이드 — **불가 확정, 9.0.78 고정** (2026-08-24 사용자 확인). 미패치 CVE 대응은 3절의 설정 완화(필수)로 한다
 - [x] MariaDB 10.11 — `ST_Distance_Sphere` 가능 (10.5.10 이하 계열에서 이미 도입, 릴리즈 노트 확인)
 - [x] 폐쇄망(운영 서버) — 반입 목록(8절) 따른다. CDN 의존 전부 제거. **개발 PC 는 외부망 가능**(GitHub 푸시·Geofabrik HEAD 성공으로 확인) — P0/P1 검증은 여기서 한다
-- [ ] 운영 서버가 정말 외부망 차단인지 — 사용자도 "아마" 라고 답함. 반입 절차 설계 전에 확정 필요
+- [x] 운영 네트워크 구조 — `../네트워크 다이어그램.jpg` (2026-08-26 사용자 제공): TLS_EDGE(Let's Encrypt :443) → NGINX(WEB VM :80) → WAS VM(Tomcat :8080 + NodeJS :8090) / DB VM(MariaDB :3306) / SEARCH VM / Squid :3128 / GitLab·Artifactory. **테스트 개발 환경에는 이 인프라가 없다.** 일부 라벨(SEARCH 포트 등)은 가려져 있어 미확인
+- [x] 운영 외부망 차단 여부 — 확정: firewalld 로 Egress 차단. 완전 물리 망분리는 아니고 Squid :3128 이 통제 통로 (다이어그램)
 - [x] 용도 — 다중 사용자 실시간 위치(7절)
-- [ ] 게이트웨이: 허용 URL 이 루트인지 서브패스인지 / WebSocket·SSE 허용 여부 / 유휴 타임아웃 — **P2 진입 전까지만 확정하면 된다. P0/P1 은 게이트웨이와 무관하게 진행 가능**
-- [ ] 백그라운드 위치 전송이 요구사항인가 (PWA 한계, 7절) — **P2 API 설계 확정 전까지만 필요**
+- [ ] 진입점: TLS_EDGE 앞에 기관 게이트웨이가 더 있는가 / 허용 URL 이 루트인지 서브패스인지 / WebSocket·SSE 허용 여부 / 유휴 타임아웃 — **P2 진입 전까지만 확정하면 된다. P0/P1 은 무관.** TLS_EDGE 가 최전단이고 우리 통제라면 서브패스·SSE 는 우리가 결정할 수 있다
+- [ ] 운영 WAS VM 에 Docker 가 있는가 — tileserver-gl 배치 방식(컨테이너 vs Node 직접 실행) 결정. Node 런타임은 있을 것으로 추정(NodeJS :8090 구동 중)
+- [ ] Squid 허용 정책 — Geofabrik·Docker Hub·npm 이 허용 목록에 들어갈 수 있는지. 반입 절차(8절)의 표준 경로를 좌우
+- [x] 백그라운드 위치 전송 — **요구 아님으로 확정** (2026-08-26). 네이티브 앱이 불가한 환경이라 PWA 확정, 백그라운드 제한은 인지·수용. 화면에 떠 있는 동안만 전송한다. 푸시 알림 등 다른 PWA 기능은 이번 프로젝트 범위 밖 (7절)
 - [ ] 위치 열람 범위 — 전원이 전원을 보는가, 그룹 단위인가. 확정 전까지 API 는 자기 자신의 위치만 반환한다 (7절)
 - [x] 백엔드 정확한 런타임 버전 — 사용자 확인으로 확정: Java 17 / Tomcat 9.0.78 / eGov 4.3 = javax 계열 (2절 (d), 3절)
 - [ ] P0 실행 재현성 — 이미지 태그 고정값, mbtiles/glyph/style JSON 해시(SHA-256), 실제 curl 응답의 Content-Type 은 반입·실행 시점에 확정해 8절 표와 P0 체크리스트를 채운다

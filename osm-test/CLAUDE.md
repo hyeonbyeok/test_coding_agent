@@ -8,10 +8,10 @@ eGov 4.3 / React 19.2 + Vite / PWA / MariaDB 환경에 자체 호스팅 OSM 벡�
 - **타일 출처**: Geofabrik 한국 Shortbread mbtiles → tileserver-gl. Overpass/원본 API 는 쓰지 않는다
 - **스타일**: Shortbread 스키마 전용. OpenMapTiles 계열 스타일은 레이어명이 달라 안 붙는다
 - **지도 라이브러리**: MapLibre GL JS 단독. Leaflet 브리지는 쓰지 않는다
-- **오리진**: Caddy 하나로 `/` `/api` `/tiles` 분기. 타일은 Tomcat 을 거치지 않는다
+- **오리진**: NGINX 하나로 `/` `/api` `/tiles` 분기 (운영 WEB VM 과 동일 구현체 — Caddy 폐기). 타일은 Tomcat 을 거치지 않는다
 - **라이선스**: ODbL — 출처 표기 필수. 커스텀 스타일엔 자동으로 안 붙는다
 - **DB**: MariaDB 10.11. OSM 원본을 적재하지 않는다. 좌표계 변환은 DB 밖(proj4js / GeoTools)
-- **폐쇄망**: **운영 서버**는 외부 다운로드 불가(개발 PC는 외부망 가능 — OSM-INTEGRATION.md 9절). 코드·스타일 JSON 에 외부 URL 금지, 경로는 상대 경로
+- **폐쇄망**: **운영**은 firewalld 로 Egress 차단 — 반입은 Artifactory 또는 Squid 경유(개발 PC는 외부망 가능). 코드·스타일 JSON 에 외부 URL 금지, 경로는 상대 경로
 - **실시간**: 위치 갱신은 폴링. WebSocket/SSE 는 게이트웨이 확인 전까지 쓰지 않는다
 
 ## 용어
