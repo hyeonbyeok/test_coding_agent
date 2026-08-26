@@ -71,7 +71,17 @@ curl -c cookie.txt -H "Content-Type: application/json" \
 curl -b cookie.txt -H "Content-Type: application/json" \
   -d '{"lat":37.4,"lng":127.1,"accuracy":10,"heading":90}' http://localhost:8888/api/positions
 curl -b cookie.txt http://localhost:8888/api/positions/latest
+curl -b cookie.txt -X POST http://localhost:8888/api/auth/logout
 ```
+
+## 브라우저에서 직접 테스트 (2026-08-26 추가)
+
+`http://localhost:8888` 를 열면 로그인 화면이 뜬다 — 위 테스트 계정 버튼을 누르면 바로 로그인된다.
+로그인 후 화면 상단에서:
+- **내 위치 임의로 보내기**: 실제 GPS 없이도 지도 중심 근처에 임의 좌표를 전송해 위치 공유를 테스트
+- GPS 를 허용하면 `GeolocateControl` 이 잡은 실제 좌표도 자동으로 `POST /api/positions` 로 전송된다
+
+다른 계정으로 동시에 보려면 별도 브라우저 프로필/시크릿 창을 쓴다(세션 쿠키가 브라우저별로 분리된다).
 
 ## 정리 (필요할 때)
 

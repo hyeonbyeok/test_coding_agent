@@ -23,10 +23,32 @@ function toGeoJSON(positions) {
   };
 }
 
+async function postPosition({ lat, lng, accuracy, heading }) {
+  await fetch("/api/positions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ lat, lng, accuracy, heading, timestamp: new Date().toISOString() }),
+  });
+}
+
 export default function MapView() {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [geoStatus, setGeoStatus] = useState("초기화 중");
+  const [sendStatus, setSendStatus] = useState("");
+
+  async function sendTestPosition() {
+    const jitter = () => (Math.random() - 0.5) * 0.01; // 약 ±500m
+    const lat = INITIAL_CENTER[1] + jitter();
+    const lng = INITIAL_CENTER[0] + jitter();
+    try {
+      await postPosition({ lat, lng, accuracy: 15, heading: Math.random() * 360 });
+      setSendStatus(`테스트 위치 전송됨 (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
+    } catch {
+      setSendStatus("전송 실패 — 로그인 상태를 확인하세요");
+    }
+  }
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -46,7 +68,17 @@ export default function MapView() {
     map.addControl(geolocate, "top-right");
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-    geolocate.on("geolocate", () => setGeoStatus("위치 확인됨"));
+    geolocate.on("geolocate", (pos) => {
+      setGeoStatus("위치 확인됨 — 서버로 전송 중");
+      postPosition({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        heading: pos.coords.heading ?? undefined,
+      })
+        .then(() => setGeoStatus("위치 확인됨 — 전송 완료"))
+        .catch(() => setGeoStatus("위치 확인됨 — 전송 실패(로그인 확인)"));
+    });
     geolocate.on("error", (e) => {
       const msg = e?.error?.message ?? "알 수 없는 오류";
       setGeoStatus(`위치 권한/오류: ${msg}`);
@@ -98,7 +130,11 @@ export default function MapView() {
 
   return (
     <div className="wrap">
-      <p>지도가 보여질 화면</p>
+      <p>
+        지도가 보여질 화면 —{" "}
+        <button onClick={sendTestPosition}>내 위치 임의로 보내기 (GPS 없이 테스트용)</button>{" "}
+        {sendStatus}
+      </p>
       <div ref={containerRef} id="map" style={{ width: "100%", height: "80vh" }} />
       <p id="status">{geoStatus}</p>
     </div>
