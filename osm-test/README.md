@@ -16,7 +16,7 @@
 ## P0 — 타일 서버
 
 ```bash
-# 이미 받아둔 것: tiles/data/korea.mbtiles, tiles/fonts_pbf/, tiles/config.json, tiles/style.korea.json
+# 이미 받아둔 것: tiles/data/{korea,kenya,peru}.mbtiles, tiles/fonts_pbf/, tiles/config.json, tiles/style.korea.json
 docker run -d --name tileserver-gl \
   -v "<repo>/osm-test/tiles:/data" -p 8081:8080 \
   maptiler/tileserver-gl:v5.6.0 \
@@ -78,10 +78,22 @@ curl -b cookie.txt -X POST http://localhost:8888/api/auth/logout
 
 `http://localhost:8888` 를 열면 로그인 화면이 뜬다 — 위 테스트 계정 버튼을 누르면 바로 로그인된다.
 로그인 후 화면 상단에서:
-- **내 위치 임의로 보내기**: 실제 GPS 없이도 지도 중심 근처에 임의 좌표를 전송해 위치 공유를 테스트
+- **지역 선택**: 대한민국 / 케냐(아프리카, 나이로비) / 페루(남아메리카, 리마) — 같은 Shortbread 스타일을
+  데이터 소스만 바꿔 재사용한다 (`frontend/src/map/shortbreadStyle.js`, `regions.js`)
+- **내 위치 임의로 보내기**: 실제 GPS 없이도 현재 지역 중심 근처에 임의 좌표를 전송해 위치 공유를 테스트
 - GPS 를 허용하면 `GeolocateControl` 이 잡은 실제 좌표도 자동으로 `POST /api/positions` 로 전송된다
 
 다른 계정으로 동시에 보려면 별도 브라우저 프로필/시크릿 창을 쓴다(세션 쿠키가 브라우저별로 분리된다).
+
+### 새 지역 추가하는 법
+
+1. Geofabrik 에서 국가 단위 shortbread mbtiles 다운로드 (`https://download.geofabrik.de/<대륙>/<국가>-shortbread-1.0.mbtiles`) → `tiles/data/<국가>.mbtiles`
+2. `tiles/config.json` 의 `"data"` 에 `"<국가>": { "mbtiles": "<국가>.mbtiles" }` 추가
+3. `docker restart tileserver-gl` (config.json 은 기동 시에만 읽는다)
+4. `frontend/src/map/regions.js` 에 `{ id, dataKey, label, center, zoom }` 추가
+
+대륙 전체 추출본(수 GB)은 쓰지 않는다 — 한국 하나(453MB)도 "전국 오프라인 지도는 GB 단위라 비현실적"으로
+Out of Scope 처리한 것과 같은 이유다. 국가 단위로만 추가한다.
 
 ## 정리 (필요할 때)
 

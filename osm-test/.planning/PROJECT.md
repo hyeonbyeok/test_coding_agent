@@ -25,6 +25,7 @@
 - NGINX 단일 오리진 + 위치 저장/조회 API + `user_position_latest` 테이블 (P2, 2026-08-26)
 - 다른 사용자 위치를 GeoJSON source 로 표시, 폴링 갱신 + 권한 필터링(관리자 전원/파견지 단위) (P2, 2026-08-26)
 - 브라우저 로그인 UI(테스트 계정 원클릭) + 로그아웃 API — 실제 로그인해 지도·위치공유를 눈으로 확인 가능 (2026-08-26)
+- 다지역(케냐·페루) 지도 전환 — 같은 Shortbread 스타일을 데이터 소스만 바꿔 재사용 (2026-08-26)
 
 ### Out of Scope
 
@@ -71,6 +72,7 @@ Geofabrik 한국 Shortbread mbtiles → tileserver-gl(Docker) → Caddy TLS → 
 | Tomcat 9.0.78 고정 — 패치·메이저 업그레이드 모두 불가 | 10.1+ 는 jakarta 라 eGov 4.x(javax)와 비호환, 패치는 기관 사정으로 불가. 미패치 RCE 는 설정 완화로 차단: Default Servlet readonly 유지·HTTP/2 미사용·Caddy 메서드 제한 (플랜 3절) | 확정 (2026-08-24) |
 | P2 백엔드는 eGov all-in-one 템플릿 대신 Spring 5.3.37+javax.servlet+MyBatis 최소 구현으로 대체 | eGov archetype 은 정부 Nexus 필요해 재현성 낮음. Spring/서블릿/Tomcat 9 조합은 3절 검증과 동일해 호환성 검증 자체는 유효 | 확정 (2026-08-26) — 실제 환경 이식 시 eGov 컨벤션(Controller-Service-Mapper)으로 옮기면 됨 |
 | tileserver-gl 은 `--public_url` 로 실제 진입점 URL을 지정해야 한다 | NGINX 뒤에서 자기참조 타일 URL을 Host 헤더만으로 잘못 구성 — 안 하면 지도가 빈 배경만 뜬다 (DEAD-ENDS.md) | 확정 (2026-08-26) — 운영 이식 시 필수 반영 |
+| 해외 지도는 대륙이 아니라 국가 단위로 추가 (케냐·페루) | Geofabrik 대륙 추출본은 한국 하나(453MB)로 이미 겪은 "GB 단위라 비현실적"과 같은 문제. Shortbread 스키마가 지역 공통이라 국가 단위 추가는 스타일 재사용만으로 가능 | 확정 (2026-08-26) — 추가 국가는 같은 패턴(config.json + regions.js)으로 확장 |
 
 <!--
 GSD 정본 섹션 구성을 따랐다 (gsd-core/templates/project.md).

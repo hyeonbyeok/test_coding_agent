@@ -180,6 +180,27 @@ OpenMapTiles 계열 스타일(Positron, Bright 등)은 레이어명이 달라 �
 - **폰트 PBF 출처 확정**: 자료(pptx)의 `npm install && node ./generate.js` 절차가 가리키는 실제 저장소는 `github.com/openmaptiles/fonts` (commit `d48c5fce2fc58b55c98d353558d807cac45e7262`) — "Noto Sans Regular"는 `NotoSans-Regular.ttf` + `NotoSansCJKtc-Regular.otf` 등 24개 TTF/OTF를 fontnik 로 합성한 결과다(`noto-sans/fonts.json`). **CJKtc(번체 중국어) 소스가 Hangul syllables(U+AC00~U+D7A3, PBF 44032~55215 구간)를 포함한다 — 44032-44287.pbf 를 curl 로 직접 받아 확인**. Noto Sans 단독으로는 한글이 없다는 점이 이번 프로젝트의 실질적 리스크였다
 - 컨테이너: `docker run -d --name tileserver-gl -v <osm-test>/tiles:/data -p 8081:8080 maptiler/tileserver-gl:v5.6.0 --config /data/config.json` (P1·P2 에서도 계속 기동 상태 유지)
 
+**다지역 확장 (2026-08-26, 사용자 요청)** — Shortbread 스키마는 Geofabrik 의 모든 지역 추출본이 공유하므로
+(레이어명이 동일), 국가 단위로 데이터만 추가하면 같은 스타일 정의를 그대로 재사용할 수 있다. 전 대륙 추출본은
+한국 하나(453MB)만으로도 이미 GB 단위라 비현실적이라고 판단했던 것과 같은 이유로 배제하고, **국가 단위**로
+한정했다:
+
+| 지역 | 파일 | 크기 | SHA-256 |
+|---|---|---|---|
+| 케냐 (아프리카) | `kenya.mbtiles` | 373MB | `5dc16818fd10ca25f2007dff7da86a129ac2ff516b5b91d0eab32cd6cdf69999` |
+| 페루 (남아메리카) | `peru.mbtiles` | 523MB | `355a7066368ebb184b8c612d0d738ea73b6777a2c444960481b3a1d7a5cc0e70` |
+
+`tiles/config.json` 의 `data`에 `kenya`/`peru` 키 추가 → tileserver-gl 재시작 한 번으로 `/data/kenya.json`,
+`/data/peru.json` 이 같이 서빙된다(재시작 필요 — config.json 은 기동 시에만 읽는다). 프론트는 스타일 레이어
+정의를 `frontend/src/map/shortbreadStyle.js` 로 뽑아 `buildStyle(dataKey, label)` 함수로 소스 URL 만 바꿔
+재사용하고, `frontend/src/map/regions.js` 의 지역 목록(센터 좌표·줌)을 지도 위 `<select>` 로 전환한다.
+curl 4종·TileJSON `vector_layers` 포함 검증 모두 통과(케냐·페루 각각 26개 레이어).
+
+**막힌 것**: MapLibre GL JS 4.7.1 은 `map.setStyle()` 재호출 시 `'style.load'` 이벤트를 다시 쏘지 않는다
+(최초 스타일 로드 전용). `'styledata'` 는 매번 발생하지만 아직 로드 중일 때 딱 한 번만 발생해 완료 신호로
+못 쓴다 — 브라우저에서 이벤트 타임라인을 직접 찍어서 확인했다. **`'idle'`** 이벤트로 교체해 해결
+(`DEAD-ENDS.md` 참고).
+
 ### P1 — React 최소 지도 (localhost)
 
 `localhost` 는 secure context 예외라 인증서 없이 GPS가 동작한다. 인증서 문제를 뒤로 미룬다.
@@ -400,6 +421,7 @@ N일 경과분 삭제, 또는 파티션 자체를 DROP. 정확한 N일 값과 �
 | 품목 | 크기 감 | 비고 |
 |---|---|---|
 | `south-korea-shortbread-1.0.mbtiles` | 453MB (확인, 2026-08-26 재다운로드분은 464MB — 계속 재생성됨) | Geofabrik. Last-Modified 가 전날일 정도로 자주 재생성됨 — 재반입 주기는 우리가 정한다. SHA-256 은 3절 P0 결과 참고 |
+| `kenya-shortbread-1.0.mbtiles` (아프리카), `peru-shortbread-1.0.mbtiles` (남아메리카) | 373MB, 523MB | 2026-08-26 다지역 확장(3절) 추가분. SHA-256 은 3절 참고 |
 | `maptiler/tileserver-gl` 이미지 | 수백 MB | **태그 고정: `v5.6.0`**, digest `sha256:3a9ccdb2...c2427` (3절). `docker save` → tar 로 반입 |
 | `openmaptiles/fonts` 저장소 (폰트 PBF 생성용) | 소스 ~50MB, 산출물 146MB | commit `d48c5fce...45e7262`. `node:20-bullseye` 컨테이너에서 `npm install && node generate.js` 로 직접 생성 확인(3절) — **또는 산출물(`fonts_pbf/`, 146MB)만 반입하는 쪽이 더 가볍다** |
 | NGINX | — | 운영 WEB VM 에 이미 있음 — 반입 불요. P2 로컬 검증용은 개발 PC 에서 직접 설치 |

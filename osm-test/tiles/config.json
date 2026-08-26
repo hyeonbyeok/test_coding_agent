@@ -7,6 +7,8 @@
     "serveAllFonts": true
   },
   "data": {
-    "korea": { "mbtiles": "korea.mbtiles" }
+    "korea": { "mbtiles": "korea.mbtiles" },
+    "kenya": { "mbtiles": "kenya.mbtiles" },
+    "peru": { "mbtiles": "peru.mbtiles" }
   }
 }

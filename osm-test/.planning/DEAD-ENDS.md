@@ -47,6 +47,21 @@ HTTP 커넥터 8080→**8082**, shutdown 포트 8005→**8006** 으로 변경. �
 `work/Catalina/` 를 수동 삭제 → WAR 복사 → 재기동. 살아있는 Tomcat 위에 WAR 만 덮어쓰는 "핫 재배포"는
 이 환경(Windows, 로컬 개발)에서 신뢰할 수 없다 — 백엔드 코드를 바꿀 때마다 이 절차를 따른다.
 
+## MapLibre GL JS 4.7 은 setStyle() 재호출 시 'style.load' 를 다시 쏘지 않는다 (2026-08-26)
+
+**증상**: 다지역 전환(`map.setStyle(buildStyle(...))`) 후 `map.once('style.load', cb)` 로 완료를
+기다렸는데 콜백이 영원히 안 온다 — 화면은 "전환 중…" 에 멈추고 캔버스는 빈 화면.
+
+**원인**: 브라우저에서 직접 이벤트 타임라인을 찍어 확인한 결과 `'style.load'` 는 지도 최초 생성 시
+한 번만 발생하고, 이후 `setStyle()` 호출에는 다시 발생하지 않았다. `'styledata'` 는 매번 발생하지만
+그 시점에 `isStyleLoaded()` 가 아직 `false` 인 경우가 있고, 그 뒤로 추가 `'styledata'` 가 안 와서
+"로드 완료 시점 확인"용으로 못 쓴다. `setStyle()` 자체는 문제없이 성공했다(`getStyle()` 로 확인) —
+이벤트만 안 왔을 뿐이다.
+
+**해결**: `'idle'`(렌더링이 안정된 시점) 이벤트로 교체. `map.once('idle', cb)` 는 초기 로드든
+`setStyle()` 재호출이든 안정적으로 온다. 지역 전환·스타일 교체가 있는 코드에서는 `'style.load'` 를
+쓰지 말 것 — 최초 로드 전용으로만 신뢰할 수 있다.
+
 ## Windows Git Bash 함정 (2026-08-26, P0/P2)
 
 - `python3` 이 Windows Store 스텁으로 잡혀 아무 것도 안 하고 "Python" 만 찍고 종료한다(exit 49).

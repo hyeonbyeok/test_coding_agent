@@ -20,8 +20,8 @@ See: `.planning/PROJECT.md` (updated 2026-08-21)
 
 ## Current Position
 
-Status: P0~P2 구현·검증 완료, 브라우저 로그인 UI 추가 완료, 코드 존재
-Last activity: 2026-08-26 — P0(tileserver-gl+curl 4종)·P1(React+MapLibre 지도)·P2(NGINX+eGov 스타일 백엔드+MariaDB, 권한 필터링 e2e 검증)까지 전부 완료. 이어서 브라우저 로그인 폼(테스트 계정 4종 원클릭)·로그아웃 API·GPS 실측 위치 전송·"테스트 위치 보내기" 버튼을 붙였다. 컨테이너 3개(tileserver-gl, osm-test-mariadb, osm-test-nginx) + Tomcat + Vite dev 서버가 로컬에 기동 중
+Status: P0~P2 구현·검증 완료, 브라우저 로그인 UI + 다지역(케냐·페루) 확장까지 완료, 코드 존재
+Last activity: 2026-08-26 — P0(tileserver-gl+curl 4종)·P1(React+MapLibre 지도)·P2(NGINX+eGov 스타일 백엔드+MariaDB, 권한 필터링 e2e 검증)까지 전부 완료. 이어서 브라우저 로그인 폼(테스트 계정 4종 원클릭)·로그아웃 API·GPS 실측 위치 전송·"테스트 위치 보내기" 버튼을 붙이고, 케냐·페루 지도를 추가해 지역 전환 UI로 검증. 컨테이너 3개(tileserver-gl, osm-test-mariadb, osm-test-nginx) + Tomcat + Vite dev 서버가 로컬에 기동 중
 
 ## Accumulated Context
 
@@ -49,12 +49,14 @@ Last activity: 2026-08-26 — P0(tileserver-gl+curl 4종)·P1(React+MapLibre 지
 ## Session Continuity
 
 Last session: 2026-08-26
-Stopped at: **P0~P2 구현·검증 + 브라우저 로그인 UI 완료.** tileserver-gl(:8081, `--public_url` 적용)·
-MariaDB 10.11(:3307)·eGov 스타일 백엔드+Tomcat 9.0.78(:8082, 로그인/로그아웃 포함)·NGINX(:8888, 단일
-오리진)·React+MapLibre 프론트(Vite :5173, 로그인 폼) 전부 로컬에 떠 있고 서로 연동 확인됨. 권한 필터링
-(관리자 전원/파견지 단위) e2e 실증 완료. agent-browser 로 로그인→지도→위치 전송까지 스크린샷으로 실측
-(`frontend/p3-korea.png`). 상세는 OSM-INTEGRATION.md 4절, 삽질은 DEAD-ENDS.md(Tomcat 핫재배포 파일 잠금)
-Next: 다지역(해외) 지도 지원 이어서 진행. 이후 P3 — PWA 캐싱, mkcert 인증서 + 실단말 필요 (사용자 진행)
+Stopped at: **P0~P2 구현·검증 + 브라우저 로그인 UI + 다지역 확장 완료.** tileserver-gl(:8081, `--public_url`
+적용, korea/kenya/peru 3지역)·MariaDB 10.11(:3307)·eGov 스타일 백엔드+Tomcat 9.0.78(:8082, 로그인/로그아웃
+포함)·NGINX(:8888, 단일 오리진)·React+MapLibre 프론트(Vite :5173, 로그인 폼+지역 선택 UI) 전부 로컬에 떠
+있고 서로 연동 확인됨. 권한 필터링(관리자 전원/파견지 단위) e2e 실증 완료. agent-browser 로 로그인→한국/
+케냐/페루 전환→위치 전송까지 스크린샷으로 실측(`frontend/p3-*.png`). 상세는 OSM-INTEGRATION.md 4절, 삽질은
+DEAD-ENDS.md(Tomcat 핫재배포 파일 잠금, MapLibre setStyle 재호출 시 'style.load' 미발생)
+Next: P3 — PWA 캐싱, mkcert 인증서 + 실단말 필요 (사용자 진행). git add/commit/push 아직 안 함(사용자 검토
+대기). 로컬 컨테이너·프로세스를 계속 띄워둘지 정리할지 다음 세션에서 사용자와 확인
 
 <!--
 100줄을 넘기지 말 것. 아카이브가 아니라 다이제스트다.
