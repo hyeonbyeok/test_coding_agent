@@ -36,6 +36,7 @@ Last activity: 2026-08-21 — 설치 가이드(pptx) 분석 → `OSM-INTEGRATION
 - 위치 갱신은 폴링, 테이블은 latest/log 분리
 - 런타임 확정: Java 17 / Tomcat 9.0.78 고정(패치·메이저 업그레이드 불가) — 조합 성립 검증 완료, 미패치 CVE 는 설정 완화 필수 (플랜 3절)
 - PWA 확정(네이티브 불가 환경) — 백그라운드 위치 제한 인지·수용, 화면에 떠 있는 동안만 전송
+- 위치 열람 범위 확정(2026-08-26) — 관리자는 전원, 일반 사용자는 같은 파견지 인원만. 서버 필터링 (플랜 7절)
 
 ### Blockers/Concerns
 
@@ -48,8 +49,8 @@ Last activity: 2026-08-21 — 설치 가이드(pptx) 분석 → `OSM-INTEGRATION
 Last session: 2026-08-26
 Stopped at: 운영 네트워크 다이어그램(실제 운영 환경, 테스트 환경엔 없음) 반영 — Caddy→NGINX 전환, 인증서 운영=TLS_EDGE(Let's
 Encrypt), 폐쇄망 확정(firewalld+Squid), 반입 경로 Artifactory/Squid 2안 (OSM-INTEGRATION.md 3·5·7·8·9절 + CLAUDE.md·PROJECT.md 정합화)
-Next: P0 (tileserver-gl 띄우고 curl 4종 확인, 재현성 절 참고) — 진입점 구성·백그라운드 요구·위치 열람 범위·WAS Docker
-유무·Squid 정책 확인은 P0 를 막지 않는다. P2 진입 전까지만 확정하면 된다 (런타임은 이미 확정됨)
+Next: P0 (tileserver-gl 띄우고 curl 4종 확인, 재현성 절 참고) — 진입점 구성·WAS Docker 유무·Squid 정책 확인은
+P0 를 막지 않는다. P2 진입 전까지만 확정하면 된다 (런타임·열람 범위는 이미 확정됨. 개인정보 보존기간·고지는 미정)
 
 <!--
 100줄을 넘기지 말 것. 아카이브가 아니라 다이제스트다.
