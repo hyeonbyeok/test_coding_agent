@@ -1,4 +1,0 @@
-# 검증용 캡처(스크린샷 등) — 재사용 가치 낮은 작업 증거물, git에 올리지 않는다
-.planning/verification/
-# frontend 루트에 임시로 떨어지는 캡처만 차단 — src/·public/ 하위 실제 에셋(아이콘·스프라이트)은 그대로 추적
-/frontend/*.png

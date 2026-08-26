@@ -15,3 +15,5 @@
 
 - [기존 관례 먼저 확인](check-existing-conventions-first.md) — 새 규칙을 만들기 전에 이미 있는지 찾는다
 - [서브에이전트 운영 원칙](subagent-operating-principles.md) — 3단 구분 · 비가역성 기준 개입 · 검증이 싸면 저모델
+- [일반화 대상 규칙의 배치 기준](generalizable-convention-placement.md) — 도메인 사실 vs 반복될 관행 구분, gitignore/템플릿/T0 중 어디에 반영할지
+- [필요해지기 전엔 인프라를 만들지 않는다](defer-infrastructure-until-actual-need.md) — 폴더·gitignore·스킬 설치도 쓸 대상이 생긴 뒤에
