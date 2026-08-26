@@ -31,6 +31,7 @@ eGov 4.3 / React 19.2 + Vite / PWA / MariaDB 환경에 자체 호스팅 OSM 벡�
 | 해봤는데 안 된 것 | `.planning/DEAD-ENDS.md` |
 | 현재 상황 · 다음 할 일 | `.planning/STATE.md` |
 | 통합 플랜 (단계·아키텍처·인증서·DB) | `.planning/OSM-INTEGRATION.md` |
+| 검증용 캡처(스크린샷) | `.planning/verification/` — git 비추적(`.gitignore`), 소스 폴더(`frontend/` 등)에 두지 않는다 |
 
 <!--
 이 파일은 T2다. 이 폴더의 파일을 읽을 때만 로드된다.

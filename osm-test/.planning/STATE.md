@@ -53,10 +53,10 @@ Stopped at: **P0~P2 구현·검증 + 브라우저 로그인 UI + 다지역 확�
 적용, korea/kenya/peru 3지역)·MariaDB 10.11(:3307)·eGov 스타일 백엔드+Tomcat 9.0.78(:8082, 로그인/로그아웃
 포함)·NGINX(:8888, 단일 오리진)·React+MapLibre 프론트(Vite :5173, 로그인 폼+지역 선택 UI) 전부 로컬에 떠
 있고 서로 연동 확인됨. 권한 필터링(관리자 전원/파견지 단위) e2e 실증 완료. agent-browser 로 로그인→한국/
-케냐/페루 전환→위치 전송까지 스크린샷으로 실측(`frontend/p3-*.png`). 상세는 OSM-INTEGRATION.md 4절, 삽질은
+케냐/페루 전환→위치 전송까지 스크린샷으로 실측(`.planning/verification/p3-*.png`, git 비추적). 상세는 OSM-INTEGRATION.md 4절, 삽질은
 DEAD-ENDS.md(Tomcat 핫재배포 파일 잠금, MapLibre setStyle 재호출 시 'style.load' 미발생)
-Next: P3 — PWA 캐싱, mkcert 인증서 + 실단말 필요 (사용자 진행). git add/commit/push 아직 안 함(사용자 검토
-대기). 로컬 컨테이너·프로세스를 계속 띄워둘지 정리할지 다음 세션에서 사용자와 확인
+Next: P3 — PWA 캐싱, mkcert 인증서 + 실단말 필요 (사용자 진행). 커밋·푸시 완료(1215c77 로그인 UI,
+69ac165 다지역 — origin/main). 로컬 컨테이너·프로세스를 계속 띄워둘지 정리할지 다음 세션에서 사용자와 확인
 
 <!--
 100줄을 넘기지 말 것. 아카이브가 아니라 다이제스트다.
