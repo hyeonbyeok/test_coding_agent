@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.osmtest.mapper.PositionMapper">
+
+  <resultMap id="positionView" type="com.osmtest.domain.PositionView">
+    <result property="userId" column="user_id"/>
+    <result property="lat" column="lat"/>
+    <result property="lng" column="lng"/>
+    <result property="heading" column="heading"/>
+    <result property="updatedAt" column="updated_at"/>
+  </resultMap>
+
+  <!-- 좌표 순서는 POINT(경도 위도) — 플랜 7절 규약 -->
+  <insert id="upsertLatest">
+    INSERT INTO user_position_latest (user_id, pos, accuracy_m, heading, updated_at)
+    VALUES (#{userId}, POINT(#{lng}, #{lat}), #{accuracy}, #{heading}, CURRENT_TIMESTAMP(3))
+    ON DUPLICATE KEY UPDATE
+      pos = POINT(#{lng}, #{lat}),
+      accuracy_m = #{accuracy},
+      heading = #{heading},
+      updated_at = CURRENT_TIMESTAMP(3)
+  </insert>
+
+  <insert id="insertLog">
+    INSERT INTO user_position_log (user_id, pos, accuracy_m, heading, logged_at)
+    VALUES (#{userId}, POINT(#{lng}, #{lat}), #{accuracy}, #{heading}, CURRENT_TIMESTAMP(3))
+  </insert>
+
+  <select id="findAllLatest" resultMap="positionView">
+    SELECT user_id,
+           ST_Y(pos) AS lat,
+           ST_X(pos) AS lng,
+           heading,
+           updated_at
+    FROM user_position_latest
+  </select>
+
+  <!-- 권한 필터는 여기서 서버가 강제한다 — 응답에 다른 파견지 사용자가 섞이지 않는다 (7절) -->
+  <select id="findLatestBySite" resultMap="positionView">
+    SELECT l.user_id,
+           ST_Y(l.pos) AS lat,
+           ST_X(l.pos) AS lng,
+           l.heading,
+           l.updated_at
+    FROM user_position_latest l
+    JOIN app_user u ON u.user_id = l.user_id
+    WHERE u.site_id = #{siteId}
+  </select>
+
+</mapper>

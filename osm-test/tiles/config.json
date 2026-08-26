@@ -1,0 +1,12 @@
+{
+  "options": {
+    "paths": {
+      "mbtiles": "data",
+      "fonts": "fonts_pbf"
+    },
+    "serveAllFonts": true
+  },
+  "data": {
+    "korea": { "mbtiles": "korea.mbtiles" }
+  }
+}

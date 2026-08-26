@@ -14,17 +14,16 @@
 
 ### Active
 
-- tileserver-gl 을 띄워 curl 로 타일·폰트·TileJSON 응답 확인 (P0)
-- React + MapLibre 로 지도와 현재 위치 표시 (P1)
-- NGINX 단일 오리진 + 위치 저장/조회 API + `user_position_latest` 테이블 (P2)
-- 다른 사용자 위치를 GeoJSON source 로 표시, 폴링 갱신 (P2)
-- PWA 타일 캐싱 (P3)
+- PWA 타일 캐싱 (P3) — 실단말 필요, 사용자 진행
 
 단계 상세는 `OSM-INTEGRATION.md`.
 
 ### Validated
 
-<!-- 완료되고 확인까지 끝난 것을 Active에서 여기로 옮긴다 -->
+- tileserver-gl 을 띄워 curl 로 타일·폰트·TileJSON 응답 확인 (P0, 2026-08-26)
+- React + MapLibre 로 지도와 현재 위치 표시 (P1, 2026-08-26)
+- NGINX 단일 오리진 + 위치 저장/조회 API + `user_position_latest` 테이블 (P2, 2026-08-26)
+- 다른 사용자 위치를 GeoJSON source 로 표시, 폴링 갱신 + 권한 필터링(관리자 전원/파견지 단위) (P2, 2026-08-26)
 
 ### Out of Scope
 
@@ -69,6 +68,8 @@ Geofabrik 한국 Shortbread mbtiles → tileserver-gl(Docker) → Caddy TLS → 
 | PWA 확정 (네이티브 앱·래퍼 불가) | 네이티브 배포가 불가한 환경이라 웹 기반으로 앱형 기능을 쓰는 선택 (배경 인지용). 백그라운드 위치 제한은 인지하고 수용 — 화면에 떠 있는 동안만 전송. 이번 프로젝트 범위는 지도·GPS·타일 캐싱만 | 확정 (2026-08-26) |
 | 위치 열람 범위: 관리자는 전원, 일반 사용자는 같은 파견지 인원만 | 운영은 파견지 단위로 참여 인원끼리만 상호 열람, 관리자는 전체 관리. 서버에서 역할·파견지로 필터링 (테스트는 role + site_id 스텁) | 확정 (2026-08-26) |
 | Tomcat 9.0.78 고정 — 패치·메이저 업그레이드 모두 불가 | 10.1+ 는 jakarta 라 eGov 4.x(javax)와 비호환, 패치는 기관 사정으로 불가. 미패치 RCE 는 설정 완화로 차단: Default Servlet readonly 유지·HTTP/2 미사용·Caddy 메서드 제한 (플랜 3절) | 확정 (2026-08-24) |
+| P2 백엔드는 eGov all-in-one 템플릿 대신 Spring 5.3.37+javax.servlet+MyBatis 최소 구현으로 대체 | eGov archetype 은 정부 Nexus 필요해 재현성 낮음. Spring/서블릿/Tomcat 9 조합은 3절 검증과 동일해 호환성 검증 자체는 유효 | 확정 (2026-08-26) — 실제 환경 이식 시 eGov 컨벤션(Controller-Service-Mapper)으로 옮기면 됨 |
+| tileserver-gl 은 `--public_url` 로 실제 진입점 URL을 지정해야 한다 | NGINX 뒤에서 자기참조 타일 URL을 Host 헤더만으로 잘못 구성 — 안 하면 지도가 빈 배경만 뜬다 (DEAD-ENDS.md) | 확정 (2026-08-26) — 운영 이식 시 필수 반영 |
 
 <!--
 GSD 정본 섹션 구성을 따랐다 (gsd-core/templates/project.md).

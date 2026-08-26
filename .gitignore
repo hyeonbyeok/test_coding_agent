@@ -29,6 +29,12 @@ osm-test/네트워크 다이어그램.jpg
 # 로컬 백업 폴더
 osm-test-back/
 
+# ── osm-test 반입물·빌드 산출물 (재현 명령은 osm-test/README.md) ──
+osm-test/tiles/data/
+osm-test/tiles/fonts_pbf/
+osm-test/tomcat/apache-tomcat-9.0.78/
+osm-test/backend/target/
+
 # ── OS / 편집기 ─────────────────────────────────
 Thumbs.db
 Desktop.ini

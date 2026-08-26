@@ -162,6 +162,24 @@ OpenMapTiles 계열 스타일(Positron, Bright 등)은 레이어명이 달라 �
   | glyph | `curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:8080/fonts/Noto Sans Regular/0-255.pbf"` | `200` |
   | 레이어 일치 | `curl -s http://localhost:8080/data/korea.json \| jq '.vector_layers[].id'` | 스타일이 참조하는 레이어명(ocean, water_polygons, land, buildings, streets, *_labels, pois, sites) 전부 포함 |
 
+**P0 실행 결과 (2026-08-26 실제 검증 완료)** — 호스트 포트는 3절 결정대로 8081 사용, 컨테이너 내부는 8080 그대로:
+
+| 확인 | 실제 결과 |
+|---|---|
+| TileJSON `GET /data/korea.json` | `200`, `Content-Type: application/json; charset=utf-8` |
+| vector tile `GET /data/korea/12/3494/1584.pbf` | `200`, `Content-Type: application/x-protobuf`, `Content-Encoding: gzip` |
+| glyph `GET /fonts/Noto Sans Regular/0-255.pbf` | `200`, `Content-type: application/x-protobuf` |
+| glyph Hangul 범위 `GET /fonts/Noto Sans Regular/44032-44287.pbf` (추가 확인) | `200` — 한글 라벨 렌더링 전제가 되는 범위라 별도로 확인함 |
+| 레이어 일치 | 통과 — TileJSON `vector_layers`(26개) 가 스타일이 참조하는 11개(ocean, water_polygons, land, buildings, streets, water_lines_labels, water_polygons_labels, street_labels, place_labels, pois, sites) 전부 포함 |
+
+재현 값:
+- 이미지: `maptiler/tileserver-gl:v5.6.0` (digest `sha256:3a9ccdb24820b6814c8119bcc8a4376c39867cb0ffe69d62919ef898b90c2427`) — `latest` 대신 안정 태그 고정
+- `korea.mbtiles` SHA-256: `2b78e0a3172a6cfbef8240e84d415fd0f0da8b15709b2744f6481b290e45a4af`
+- `style.korea.json` SHA-256: `3695ff5527e6f3f77dff8444b7756152ea8430b4e1e97054ba757c5d3040281d`
+- `config.json` SHA-256: `d28704fa3e4312849e6a54a1ee06066bf5c69b71bf2ab64ed740c70dacb911bb`
+- **폰트 PBF 출처 확정**: 자료(pptx)의 `npm install && node ./generate.js` 절차가 가리키는 실제 저장소는 `github.com/openmaptiles/fonts` (commit `d48c5fce2fc58b55c98d353558d807cac45e7262`) — "Noto Sans Regular"는 `NotoSans-Regular.ttf` + `NotoSansCJKtc-Regular.otf` 등 24개 TTF/OTF를 fontnik 로 합성한 결과다(`noto-sans/fonts.json`). **CJKtc(번체 중국어) 소스가 Hangul syllables(U+AC00~U+D7A3, PBF 44032~55215 구간)를 포함한다 — 44032-44287.pbf 를 curl 로 직접 받아 확인**. Noto Sans 단독으로는 한글이 없다는 점이 이번 프로젝트의 실질적 리스크였다
+- 컨테이너: `docker run -d --name tileserver-gl -v <osm-test>/tiles:/data -p 8081:8080 maptiler/tileserver-gl:v5.6.0 --config /data/config.json` (P1·P2 에서도 계속 기동 상태 유지)
+
 ### P1 — React 최소 지도 (localhost)
 
 `localhost` 는 secure context 예외라 인증서 없이 GPS가 동작한다. 인증서 문제를 뒤로 미룬다.
@@ -174,6 +192,13 @@ OpenMapTiles 계열 스타일(Positron, Bright 등)은 레이어명이 달라 �
 
 **완료 기준**: 지도가 렌더링되고 한글 라벨이 보인다 / ODbL 출처 표기가 화면에 있다 / localhost 에서 GPS 허용·거부 모두 처리된다(거부해도 에러로 죽지 않고 안내 UI가 뜬다) / 컴포넌트를 반복 마운트·언마운트해도 `map.remove()` 가 호출되어 지도 인스턴스가 누적되지 않는다
 
+**P1 실행 결과 (2026-08-26, `osm-test/frontend/`, 완료)**: Vite + React 19.2 스캐폴드에 `maplibre-gl` 단독으로 구현. 4개 완료 기준 전부 브라우저(agent-browser, headless Chrome, WebGL2 지원 확인)로 실측 확인:
+- 지도·한글 라벨 렌더링 — 스크린샷으로 확인(신정동·고등동·시흥동 등 정상 표시)
+- ODbL 출처 표기 — 우하단에 "© OpenStreetMap contributors (ODbL)" 표시 (source `attribution` 필드로 추가)
+- GPS 거부/오류 처리 — headless 환경(geolocation 미지원)에서 `GeolocateControl` error 이벤트가 잡혀 "위치 권한/오류: ..." 안내 텍스트로 전환, 화면이 죽지 않음. **GPS 허용 경로는 headless 한계로 미검증** — 실단말에서 P3 때 확인
+- `map.remove()` 누수 없음 — 마운트/언마운트 4회 반복 후에도 `canvas` 요소가 항상 정확히 1개, 콘솔 에러 없음
+- 덤으로 P2 를 위해 타 사용자 위치 GeoJSON source(`other-users`, `circle` 레이어)와 `/api/positions/latest` 폴링(7초)을 P1 단계에서 미리 배선함 — stale(5분 초과) 시 회색/반투명 처리
+
 ### P2 — 단일 오리진 + 백엔드 연동
 
 - NGINX 3방향 분기 (3절) — 운영 WEB VM 과 같은 구현체로 로컬에서 검증해 설정을 그대로 이식한다
@@ -181,6 +206,24 @@ OpenMapTiles 계열 스타일(Positron, Bright 등)은 레이어명이 달라 �
 - MariaDB 스키마 — `POINT NOT NULL` + `SPATIAL INDEX` (7절 DDL. `SRID 4326` 컬럼 속성은 MySQL 8 전용이라 쓰지 않는다)
 
 **완료 기준**: 인증된 사용자의 위치가 POST 로 저장되고 `user_position_latest` 에서 값이 확인된다 / 다른 사용자 위치가 GET 으로 조회되어 GeoJSON source 로 지도에 갱신된다 / `updated_at` 이 오래된 위치는 흐리게·숨김 처리된다 / 권한 없는 사용자의 위치가 응답에 섞이지 않는다(7절 API 계약)
+
+**P2 실행 결과 (2026-08-26, 완료)** — `osm-test/backend/`(Spring 5.3.37 + javax.servlet + MyBatis, eGov all-in-one 템플릿 대신 최소 구현으로 대체 — 아래 "타협" 참고), `osm-test/tomcat/`(9.0.78 압축 해제본), `osm-test/nginx/nginx.conf`, MariaDB 10.11 컨테이너.
+
+구성 (로컬 검증용 포트 — 8080/8005 는 이 개발 PC에서 무관한 프로세스가 이미 점유 중이라 8082/8006 으로 조정, DEAD-ENDS.md 참고):
+- MariaDB 10.11 컨테이너 :3307→3306, `schema.sql` 로 `user_position_latest`/`log`/`app_user` 생성, 테스트 계정 4개(ADMIN 1, USER×3 — siteA 2명·siteB 1명)
+- eGov 스타일 백엔드 war 를 Tomcat 9.0.78(:8082, ROOT 컨텍스트)에 배포 — CVE 완화 확인: `conf/web.xml` 에 `readonly` 활성 오버라이드 없음(컴파일 기본값 true 유지), `conf/server.xml` 의 HTTP/2 `UpgradeProtocol` 은 주석 처리된 블록 안(기본 비활성) — **직접 파일로 확인**
+- NGINX 컨테이너(:8888)로 3분기 실행 — `/api` 는 `limit_except GET POST`, `/tiles` 는 tileserver-gl 직결(Tomcat 우회)
+
+**완료 기준 검증 (전부 NGINX 단일 오리진 :8888 경유, curl + 브라우저)**:
+- POST 저장 확인: `siteA_user1`/`siteA_user2`/`siteB_user1` 로그인 후 각각 POST → `GET /api/positions/latest` 로 정확한 lat/lng/heading 값 회신 확인
+- 다른 사용자 위치 GeoJSON 갱신: 브라우저에서 `siteA_user2` 로 로그인 후 지도에 회색 원 2개(`siteA_user1`, `siteA_user2`) 렌더링 확인 (스크린샷)
+- stale 흐림 처리 동작: 저장 후 5분(`STALE_AFTER_MS`) 이 지나 두 마커가 실제로 회색/반투명(`circle-opacity: 0.4`)으로 표시됨 — 의도치 않게 실제 시간 경과로 이 케이스까지 검증됨
+- **권한 필터링 (핵심)**: `siteA_user1` 세션 → siteA 2명만 응답(`siteB_user1` 없음). `siteB_user1` 세션 → 자신만 응답. `admin1` 세션 → 3명 전원 응답. 세션 없이 호출 → `401`. 위·경도 범위 밖(`lat=999`) POST → `400`
+- MariaDB 검증: `ST_Distance_Sphere(POINT(0,0),POINT(1,1))` = 157249.03... (정상), `POINT(경도 위도)` 순서로 저장·조회 결과 일치
+
+**발견한 문제와 수정** (DEAD-ENDS.md 상세): tileserver-gl 이 NGINX 뒤에서 TileJSON 의 `tiles`/`glyphs` 자기참조 URL을 `/tiles` 접두어·포트 없이 잘못 생성 — `--public_url` 옵션 필수로 확정. **운영 이식 시 이 옵션을 실제 진입점 URL로 반드시 맞춰야 한다** (9절에 반영).
+
+**타협 — eGov all-in-one 템플릿 대신 최소 구현**: eGov 4.3 공식 archetype 은 정부 Nexus 아카이브에서 받아야 해 이 환경에서 재현성이 낮다고 판단, Spring 5.3.37 + javax.servlet(Servlet 4.0) + MyBatis 조합으로 eGov 관례(Controller-Service-Mapper)를 따르는 최소 구현으로 대체했다. Spring 버전·서블릿 API·Tomcat 9 조합은 3절에서 검증된 것과 동일 — **런타임 호환성 검증 자체는 유효하다.** 인증은 세션 기반 간이 로그인 스텁(DB 평문 대조)이다 — 실제 인증 체계 이식은 P2 범위 밖(기존 환경 이식 시점 몫)
 
 ### P3 — PWA
 
@@ -356,8 +399,9 @@ N일 경과분 삭제, 또는 파티션 자체를 DROP. 정확한 N일 값과 �
 
 | 품목 | 크기 감 | 비고 |
 |---|---|---|
-| `south-korea-shortbread-1.0.mbtiles` | 453MB (확인) | Geofabrik. Last-Modified 가 전날일 정도로 자주 재생성됨 — 재반입 주기는 우리가 정한다 |
-| `maptiler/tileserver-gl` 이미지 | 수백 MB | `docker save` → tar. `latest` 대신 태그 고정 + digest(`sha256:...`) 기록 |
+| `south-korea-shortbread-1.0.mbtiles` | 453MB (확인, 2026-08-26 재다운로드분은 464MB — 계속 재생성됨) | Geofabrik. Last-Modified 가 전날일 정도로 자주 재생성됨 — 재반입 주기는 우리가 정한다. SHA-256 은 3절 P0 결과 참고 |
+| `maptiler/tileserver-gl` 이미지 | 수백 MB | **태그 고정: `v5.6.0`**, digest `sha256:3a9ccdb2...c2427` (3절). `docker save` → tar 로 반입 |
+| `openmaptiles/fonts` 저장소 (폰트 PBF 생성용) | 소스 ~50MB, 산출물 146MB | commit `d48c5fce...45e7262`. `node:20-bullseye` 컨테이너에서 `npm install && node generate.js` 로 직접 생성 확인(3절) — **또는 산출물(`fonts_pbf/`, 146MB)만 반입하는 쪽이 더 가볍다** |
 | NGINX | — | 운영 WEB VM 에 이미 있음 — 반입 불요. P2 로컬 검증용은 개발 PC 에서 직접 설치 |
 | `node:20` 이미지 | 대 | 폰트 PBF 생성용. **또는 외부에서 `fonts_pbf/` 를 만들어 결과물만 반입** — 이쪽이 가볍다 |
 | npm 의존성 | 중 | `maplibre-gl`, `vite-plugin-pwa` 등. Artifactory npm 저장소 또는 `node_modules` tar |
@@ -381,6 +425,8 @@ N일 경과분 삭제, 또는 파티션 자체를 DROP. 정확한 N일 값과 �
 - [x] 백그라운드 위치 전송 — **요구 아님으로 확정** (2026-08-26). 네이티브 앱이 불가한 환경이라 PWA 확정, 백그라운드 제한은 인지·수용. 화면에 떠 있는 동안만 전송한다. 푸시 알림 등 다른 PWA 기능은 이번 프로젝트 범위 밖 (7절)
 - [x] 위치 열람 범위 — **확정 (2026-08-26)**: 관리자는 전원, 일반 사용자는 같은 파견지 인원만 (7절 권한). 개인정보에서 남은 것은 보존기간(N일)·수집 고지 문구
 - [x] 백엔드 정확한 런타임 버전 — 사용자 확인으로 확정: Java 17 / Tomcat 9.0.78 / eGov 4.3 = javax 계열 (2절 (d), 3절)
-- [ ] P0 실행 재현성 — 이미지 태그 고정값, mbtiles/glyph/style JSON 해시(SHA-256), 실제 curl 응답의 Content-Type 은 반입·실행 시점에 확정해 8절 표와 P0 체크리스트를 채운다
+- [x] P0 실행 재현성 — **완료 (2026-08-26)**: tileserver-gl v5.6.0 기동, curl 4종(+Hangul 폰트 범위) 전부 200, TileJSON vector_layers 가 스타일 참조 레이어 전부 포함. 이미지 태그·digest·해시 3종은 3절, 반입 크기는 8절에 기록 (`osm-test/tiles/`)
 - [x] mbtiles 용량 — 453MB (2026-08-24 HEAD). 갱신: Last-Modified 2026-08-23, 자주 재생성되는 것으로 보임 (정확한 주기는 미확인)
 - [ ] 자료의 손수 작성 스타일이 실사용에 충분한지. 부족하면 Shortbread 호환 완성 스타일(Versatiles Colorful 등) 기반으로 커스터마이즈
+- [x] P1·P2 end-to-end 검증 — **완료 (2026-08-26)**. 지도·GPS 처리·타 사용자 위치·권한 필터링(관리자 전원/일반 파견지 단위) 전부 브라우저·curl 로 실측. 상세는 4절 P1·P2 실행 결과, 재현 명령은 각 폴더의 README
+- [x] **운영 이식 시 필수**: tileserver-gl `--public_url` 을 실제 진입점 URL(서브패스 포함)로 지정해야 한다 — 안 하면 자기참조 타일 URL이 깨져 지도가 빈 배경만 뜬다. curl 로 TileJSON 상태 코드만 보면 못 잡는다(200 이 나온다) — `tiles` 필드의 실제 URL 값을 확인할 것 (DEAD-ENDS.md)

@@ -1,0 +1,55 @@
+{
+  "version": 8,
+  "name": "Korea Shortbread (with labels)",
+  "glyphs": "/tiles/fonts/{fontstack}/{range}.pbf",
+  "sources": {
+    "sb": { "type": "vector", "url": "/tiles/data/korea.json" }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#f2efe9" } },
+    { "id": "ocean", "type": "fill", "source": "sb", "source-layer": "ocean",
+      "paint": { "fill-color": "#bcd9ea" } },
+    { "id": "water", "type": "fill", "source": "sb", "source-layer": "water_polygons",
+      "paint": { "fill-color": "#bcd9ea" } },
+    { "id": "land", "type": "fill", "source": "sb", "source-layer": "land",
+      "paint": { "fill-color": "#efe9dd" } },
+    { "id": "buildings", "type": "fill", "source": "sb", "source-layer": "buildings",
+      "paint": { "fill-color": "#d9d0c2", "fill-opacity": 0.6 } },
+    { "id": "streets-outline", "type": "line", "source": "sb", "source-layer": "streets",
+      "paint": { "line-color": "#c8c0b3", "line-width": 2.2 } },
+    { "id": "streets", "type": "line", "source": "sb", "source-layer": "streets",
+      "paint": { "line-color": "#ffffff", "line-width": 1.2 } },
+    { "id": "water-line-labels", "type": "symbol", "source": "sb", "source-layer": "water_lines_labels",
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": ["coalesce", ["get", "name_ko"], ["get", "name"], ["get", "name_en"]],
+        "text-font": ["Noto Sans Regular"], "text-size": 12 },
+      "paint": { "text-color": "#3b5b7a", "text-halo-width": 1, "text-halo-color": "#ffffff" } },
+    { "id": "water-polygon-labels", "type": "symbol", "source": "sb", "source-layer": "water_polygons_labels",
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_ko"], ["get", "name"], ["get", "name_en"]],
+        "text-font": ["Noto Sans Regular"], "text-size": 12 },
+      "paint": { "text-color": "#3b5b7a", "text-halo-width": 1, "text-halo-color": "#ffffff" } },
+    { "id": "street-labels", "type": "symbol", "source": "sb", "source-layer": "street_labels",
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": ["coalesce", ["get", "name_ko"], ["get", "name"], ["get", "name_en"]],
+        "text-font": ["Noto Sans Regular"], "text-size": 11 },
+      "paint": { "text-halo-width": 1, "text-halo-color": "#ffffff" } },
+    { "id": "place-labels", "type": "symbol", "source": "sb", "source-layer": "place_labels",
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_ko"], ["get", "name"], ["get", "name_en"]],
+        "text-font": ["Noto Sans Regular"], "text-size": 12 },
+      "paint": { "text-halo-width": 1, "text-halo-color": "#ffffff" } },
+    { "id": "poi-labels", "type": "symbol", "source": "sb", "source-layer": "pois",
+      "layout": {
+        "text-field": ["coalesce", ["get", "name"], ["get", "name_en"]], "text-font": ["Noto Sans Regular"],
+        "text-size": 11, "text-offset": [0, 0.8], "text-anchor": "top" },
+      "paint": { "text-halo-width": 1, "text-halo-color": "#ffffff" } },
+    { "id": "site-labels", "type": "symbol", "source": "sb", "source-layer": "sites",
+      "layout": {
+        "text-field": ["coalesce", ["get", "name"], ["get", "name_en"]], "text-font": ["Noto Sans Regular"],
+        "text-size": 11, "text-offset": [0, 0.8], "text-anchor": "top" },
+      "paint": { "text-halo-width": 1, "text-halo-color": "#ffffff" } }
+  ]
+}

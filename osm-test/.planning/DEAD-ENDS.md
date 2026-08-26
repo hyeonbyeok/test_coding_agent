@@ -1,25 +1,46 @@
-# 막다른 길
+# osm-test — 막다른 길 / 삽질 기록
 
-이미 해봤고 안 된 것들. **다시 시도하지 말 것.**
+## tileserver-gl 이 자기참조 타일 URL을 잘못 만든다 (2026-08-26, P2)
 
-기록하는 이유: 같은 실패를 반복하는 게 가장 비싼 낭비다.
-성공한 방법은 코드에 남지만, 실패한 방법은 여기 안 적으면 사라진다.
+**증상**: NGINX(`/tiles/*` → tileserver-gl) 뒤에 둔 상태에서 TileJSON(`/tiles/data/korea.json`)은
+정상 응답하지만, 그 안의 `tiles` 필드가 `http://localhost/data/korea/{z}/{x}/{y}.pbf` 처럼
+① `/tiles` 접두어가 빠지고 ② 포트(8888)도 빠진 URL을 반환했다. 브라우저(MapLibre)가 이 URL로
+직접 타일을 요청해 nginx 의 `/` 캐치올(→ Vite)로 잘못 라우팅되며 콘솔에 `Failed to fetch` 가 반복됐다.
 
----
+**원인**: tileserver-gl 은 자신이 어떤 경로 접두어 뒤에 마운트됐는지 모른다. 응답의 `tiles`/`glyphs`
+URL은 요청의 `Host` 헤더 + 자기 자신의 라우트 규칙(`/data/...`)으로만 조립한다 — 기동 로그의
+"Host header poisoning mitigation is NOT enabled" 경고가 이 문제를 정확히 가리키고 있었다.
 
-아직 없음.
+**해결**: `--public_url "http://<외부에서 보이는 origin>/tiles/"` 옵션을 tileserver-gl 기동 인자에
+추가하면 이 값을 기준으로 `tiles`/`glyphs` URL을 만든다. 로컬 검증에선 `http://localhost:8888/tiles/`.
 
-<!--
-항목 형식:
+**운영 이식 시 반드시 반영**: NGINX 뒤에 tileserver-gl 을 두는 배치라면 `--public_url` 을
+**실제 진입점 URL**(`https://<TLS_EDGE>/tiles/` 또는 서브패스가 있다면 그 경로 포함)로 맞춰야 한다.
+빠뜨리면 로컬처럼 조용히 깨진다 — curl 로 `/data/korea.json` 응답 코드만 보면 200 이라 P0 체크리스트조차
+이 문제를 못 잡는다(TileJSON 자체는 200 이니까). **`vector_layers` 뿐 아니라 `tiles` 필드의 실제 URL도
+확인 항목에 넣어야 한다.**
 
-## {{시도한 것}}
+## 개발 PC 포트 8080 / 8005 선점 (2026-08-26, P2)
 
-- **언제**: {{YYYY-MM-DD}}
-- **왜 안 됐나**: {{구체적인 실패 원인. "안 됨" 말고 무엇이 어떻게 실패했는지}}
-- **대신 한 것**: {{채택한 방법, 또는 "아직 없음"}}
-- **다시 볼 조건**: {{이게 바뀌면 재시도 가치가 있다. 없으면 "없음"}}
+**증상**: Tomcat 9.0.78 을 기본 설정(8080/8005)으로 기동하면 `BindException: Address already in use`.
 
-GSD 에는 이 파일이 없다. 우리가 추가한 것이다.
-GSD 를 켜면 근사한 자리는 SUMMARY.md 의 deviations 와 STATE.md 의 Blockers 지만,
-"영구히 시도하지 말 것" 을 담는 자리는 없어서 별도로 둔다.
--->
+**원인**: 이 개발 PC에 2026-08-24 부터 구동 중인 무관한 `java.exe` 프로세스(PID 27912)가 이미 8080 을,
+다른 프로세스가 8005 를 점유하고 있었다. osm-test 가 오늘 띄운 것이 아니다 — 확인 후 그대로 뒀다
+(무관한 프로세스를 죽이지 않는다).
+
+**해결**: 이 로컬 테스트 환경에 한해 `tomcat/apache-tomcat-9.0.78/conf/server.xml` 에서
+HTTP 커넥터 8080→**8082**, shutdown 포트 8005→**8006** 으로 변경. 운영/계획 문서상 정식 포트는
+그대로 8080 이다 — 이 변경은 `tomcat/conf/server.xml` 에만 있고 계획 문서(3절)에는 반영하지 않는다
+(개발 PC 국지적 사정이라 재현성 문서를 오염시키지 않는다). 다른 PC에서 재현할 때는 먼저
+`netstat -ano | findstr :8080` 로 충돌 여부를 확인할 것.
+
+## Windows Git Bash 함정 (2026-08-26, P0/P2)
+
+- `python3` 이 Windows Store 스텁으로 잡혀 아무 것도 안 하고 "Python" 만 찍고 종료한다(exit 49).
+  실제 파이썬은 `python`(`C:\Python\python.exe`) 이었다. `which python3 python py` 로 먼저 확인할 것
+- `docker run -v ... -w /work` 처럼 컨테이너 내부 경로를 옵션에 쓰면 Git Bash 의 자동 경로 변환이
+  `/work` 를 `C:/Program Files/Git/work` 로 바꿔버려 `docker: invalid working directory` 로 실패한다.
+  `MSYS_NO_PATHCONV=1` 을 명령 앞에 붙여야 한다
+- Windows 콘솔 기본 코드페이지(cp949)로는 파이썬 stdout 의 유니코드(한글, `–` 등 특수문자)를
+  그대로 못 찍고 `UnicodeEncodeError` 로 죽는다. 콘솔에 직접 찍지 말고 파일로 리다이렉트하거나
+  `sys.stdout` 을 UTF-8 로 재래핑할 것
