@@ -20,7 +20,8 @@ See: `.planning/PROJECT.md` (updated 2026-08-21)
 
 ## Current Position
 
-Status: P0~P2 구현·검증 완료, 브라우저 로그인 UI + 다지역(케냐·페루) 확장까지 완료, 코드 존재
+Status: P0~P2 구현·검증 완료, 브라우저 로그인 UI + 다지역(케냐·페루) 확장 + osm.org 근사 스타일 확장 완료, 코드 존재
+2026-08-27: 스타일을 OSM Carto 근사로 확장(토지이용 채색·도로 등급색·철도·경계·지명 위계) — 3개 줌 레벨 브라우저 실측 확인. 근거와 대안 비교는 PROJECT.md Key Decisions
 Last activity: 2026-08-26 — P0(tileserver-gl+curl 4종)·P1(React+MapLibre 지도)·P2(NGINX+eGov 스타일 백엔드+MariaDB, 권한 필터링 e2e 검증)까지 전부 완료. 이어서 브라우저 로그인 폼(테스트 계정 4종 원클릭)·로그아웃 API·GPS 실측 위치 전송·"테스트 위치 보내기" 버튼을 붙이고, 케냐·페루 지도를 추가해 지역 전환 UI로 검증. 컨테이너 3개(tileserver-gl, osm-test-mariadb, osm-test-nginx) + Tomcat + Vite dev 서버가 로컬에 기동 중
 
 ## Accumulated Context

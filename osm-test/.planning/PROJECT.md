@@ -73,6 +73,7 @@ Geofabrik 한국 Shortbread mbtiles → tileserver-gl(Docker) → Caddy TLS → 
 | P2 백엔드는 eGov all-in-one 템플릿 대신 Spring 5.3.37+javax.servlet+MyBatis 최소 구현으로 대체 | eGov archetype 은 정부 Nexus 필요해 재현성 낮음. Spring/서블릿/Tomcat 9 조합은 3절 검증과 동일해 호환성 검증 자체는 유효 | 확정 (2026-08-26) — 실제 환경 이식 시 eGov 컨벤션(Controller-Service-Mapper)으로 옮기면 됨 |
 | tileserver-gl 은 `--public_url` 로 실제 진입점 URL을 지정해야 한다 | NGINX 뒤에서 자기참조 타일 URL을 Host 헤더만으로 잘못 구성 — 안 하면 지도가 빈 배경만 뜬다 (DEAD-ENDS.md) | 확정 (2026-08-26) — 운영 이식 시 필수 반영 |
 | 해외 지도는 대륙이 아니라 국가 단위로 추가 (케냐·페루) | Geofabrik 대륙 추출본은 한국 하나(453MB)로 이미 겪은 "GB 단위라 비현실적"과 같은 문제. Shortbread 스키마가 지역 공통이라 국가 단위 추가는 스타일 재사용만으로 가능 | 확정 (2026-08-26) — 추가 국가는 같은 패턴(config.json + regions.js)으로 확장 |
+| osm.org 같은 모습은 스타일 확장으로 해결 — 타일 다운로드·Carto 래스터 스택은 안 씀 | osm.org 타일 대량 다운로드는 OSMF Tile Usage Policy 4절이 명시 금지("Offline use is not permitted"). Carto 렌더링 스택(PostGIS+Mapnik) 자체 호스팅은 가능하지만 래스터라 PWA 캐시가 수백 MB로 커지고 인프라 부담이 큼. 같은 데이터가 타일에 이미 있으므로 스타일 JSON 확장(토지이용·도로 등급색·철도·경계·지명 위계)만으로 근사 가능 — z12 타일에 streets/land 레이어가 실재함을 실측 확인(메타데이터 minzoom=14는 부정확) | 확정 (2026-08-27) — 픽셀 동일이 요구되면 그때 Carto 스택 재검토 |
 
 <!--
 GSD 정본 섹션 구성을 따랐다 (gsd-core/templates/project.md).
